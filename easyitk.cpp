@@ -29,19 +29,35 @@ typedef itk::BinaryBallStructuringElement<unsigned char,2> StructuringElementTyp
 
 
 #define uchar unsigned char
-/*
-class Mat2 {
+
+/*class Mat2 {
 	Mat data;
 
 
-	uchar at(int y, int x){
+	void set(int y, int x, char value){
+		Mat::IndexType pt;
+		pt[0] = x;
+		pt[1] = y;
+		input.SetPixel(pt,value);
 	}
-
-
-
-
-
 };*/
+
+
+void image_set(Mat& input, int y, int x, uchar value){
+	Mat::IndexType pt;
+	pt[0] = x;
+	pt[1] = y;
+	input.SetPixel(pt,value);
+}
+
+
+
+
+void image_size(int& rows, int& cols, Mat& image){
+	Mat::SizeType size = image.GetLargestPossibleRegion().GetSize();
+	rows = size[1];
+	cols = size[0];
+}
 
 
 
@@ -103,6 +119,10 @@ class MatSystem {
 	Mat&      exec_blur(Mat& input);
 	Mat&      exec_threshold(Mat& input, int lower, int upper);
 	Mat&      exec_erode(Mat& input);
+
+
+
+	void draw_Rect(Mat& input, int y, int x, int sy, int sx);
 };
 
 
@@ -168,35 +188,78 @@ Mat& MatSystem::exec_canny(Mat& input){
 }
 
 
+void MatSystem::draw_Rect(Mat& input, int y, int x, int sy, int sx){
+	for (int i=0; i<sx; i++){
+		image_set(input,y,x+i,64);
+	}
+	for (int i=0; i<sx; i++){
+		image_set(input,y+sy,x+i,64);
+	}
+	for (int i=0; i<sy; i++){
+		image_set(input,y+i,x,64);
+	}
+	for (int i=0; i<sy; i++){
+		image_set(input,y+i,x+sx,64);
+	}
+}
+
 void MatSystem::exec_extractContour(Mat& input){
 	contour->SetInput(&input);
 	contour->SetContourValue(25);
 	contour->Update();
 
-	std::cout << "There are " << contour->GetNumberOfOutputs() << " contours" << std::endl;
+	//std::cout << "There are " << contour->GetNumberOfOutputs() << " contours" << std::endl;
 	for(unsigned int i = 0; i < contour->GetNumberOfOutputs(); i++){
 		//std::cout << "Contour " << i << ": " << std::endl;
 		itk::VectorContainer<unsigned int, itk::ContinuousIndex<double, 2> >::Iterator  it = contour->GetOutput(i)->GetVertexList()->Begin();
 
-		while(it != contour->GetOutput(i)->GetVertexList()->End()){
-			std::cout << it->Value() << std::endl;
-			it++;
+		if ( contour->GetOutput(i)->GetVertexList()->size() > 0 ){
+			itk::ContinuousIndex<double, 2u> ini = it->Value();
+			int min_x = ini[0];
+			int max_x = ini[0];
+			int min_y = ini[1];
+			int max_y = ini[1];
+			while(it != contour->GetOutput(i)->GetVertexList()->End()){
+				itk::ContinuousIndex<double, 2u> pt = it->Value();
+				if ( pt[0] < min_x )
+					min_x = pt[0];
+				if ( pt[0] > max_x )
+					max_x = pt[0];
+				if ( pt[1] < min_y )
+					min_y = pt[1];
+				if ( pt[1] > max_y )
+					max_y = pt[1];
+				it++;
+			}
+
+			int dx = max_x - min_x;
+			int dy = max_y - min_y;
+			int media = ( dx + dy )/2;
+
+
+			//cout << dy << " " << dx << " " << dy*dy+dx*dx << " ";
+			if ( abs(dy-dx) > 20 || media < 200 ){
+				continue;
+				//cout << "quadrado";
+			}
+			//cout << endl;
+
+			cout << media << endl;
+
+			this->draw_Rect(input, min_y, min_x, dy, dx);
+			if ( media > 290 && media < 310 )
+				cout << "  5 centavos\n";
+			else if ( media > 270 && media < 290 )
+				cout << " 10 centavos\n";
+			else if ( media > 340 && media < 360 )
+				cout << " 25 centavos\n";
+			else if ( media > 320 && media < 340 )
+				cout << " 50 centavos\n";
+			else if ( media > 370 && media < 400 )
+				cout << "100 centavos\n";
 		}
-		std::cout << std::endl;
+
 	}
-
-	/*Mat::IndexType pt;
-    pt[0] = 100;
-    pt[1] = 100;
-    
-	//unsigned char pixelValue = image->GetPixel(pixelIndex);
-
-	input.SetPixel(pt,255);*/
-
-
-
-
-
 
 
 
@@ -244,13 +307,6 @@ Mat& MatSystem::exec_erode(Mat& input){
 
 
 
-void image_size(int& rows, int& cols, Mat& image){
-	Mat::SizeType size = image.GetLargestPossibleRegion().GetSize();
-	rows = size[1];
-	cols = size[0];
-}
-
-
 
 
 
@@ -287,7 +343,7 @@ int main(int argc, char** argv){
 
 
 		image_size(rows,cols,img);
-		cout << rows << " " << cols << endl;
+		//cout << rows << " " << cols << endl;
 
 
 		Mat& borrado = ms.exec_blur(img);
@@ -299,32 +355,9 @@ int main(int argc, char** argv){
 
 		//MatFloat& sobel = ms.exec_sobel(img);
 
-		//ms.exec_extractContour(menor);
+		ms.exec_extractContour(menor);
 	
 		//Mat& menor = ms.resize(img, 50, 50);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 		ms.imwrite(string("tmp/")+getName(argv[i]), menor);
