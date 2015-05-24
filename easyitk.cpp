@@ -247,7 +247,7 @@ void MatSystem::exec_extractContour(Mat& input){
 			cout << media << endl;
 
 			this->draw_Rect(input, min_y, min_x, dy, dx);
-			if ( media > 290 && media < 310 )
+			if ( media > 290 && media < 320 )
 				cout << "  5 centavos\n";
 			else if ( media > 270 && media < 290 )
 				cout << " 10 centavos\n";
